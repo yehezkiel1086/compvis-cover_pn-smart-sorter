@@ -2,3 +2,4 @@
 .env
 Battery-Type-Detection-1/
 yolov8s.pt
+.ipynb_checkpoints/
