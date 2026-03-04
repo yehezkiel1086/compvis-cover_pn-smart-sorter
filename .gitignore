@@ -1,5 +1,12 @@
 .venv/
 .env
-Battery-Type-Detection-1/
+Battery-Type-Detection-*/
 yolov8s.pt
 .ipynb_checkpoints/
+# battery_detection/
+
+fusion.py
+ocr_module.py
+requirements.txt.bak
+test.py
+train.py
