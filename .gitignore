@@ -4,6 +4,7 @@ Battery-Type-Detection-*/
 yolov8s.pt
 .ipynb_checkpoints/
 # battery_detection/
+PN-Cover-Smart-Sorter-1/
 
 fusion.py
 ocr_module.py
