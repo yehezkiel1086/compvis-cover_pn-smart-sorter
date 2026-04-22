@@ -9,5 +9,5 @@ PN-Cover-Smart-Sorter-1/
 fusion.py
 ocr_module.py
 requirements.txt.bak
-test.py
+# test.py
 train.py
