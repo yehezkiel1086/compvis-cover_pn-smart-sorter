@@ -77,12 +77,9 @@ class DetectRequest(BaseModel):
 
 class DetectionResult(BaseModel):
     detected: bool
-    class_name: str | None = None     # serialised as className by alias
+    className: str | None = None      # camelCase so the JS client reads it directly
     confidence: float = 0.0
     box: list[float] | None = None    # [x1n, y1n, x2n, y2n] normalised 0–1
-
-    class Config:
-        populate_by_name = True
 
 # ─────────────────────────────────────────────
 # Helpers
@@ -109,7 +106,7 @@ def best_detection(results, min_conf: float = 0.0):
                 x1, y1, x2, y2 = box.xyxy[0].tolist()
                 h, w = r.orig_shape
                 best = {
-                    "class_name": r.names[int(box.cls[0])],
+                    "className": r.names[int(box.cls[0])],
                     "confidence": conf,
                     "box": [x1 / w, y1 / h, x2 / w, y2 / h],   # normalised
                 }
@@ -150,13 +147,13 @@ def detect(req: DetectRequest):
         return DetectionResult(detected=False)
 
     print(
-        f"[DETECT] {det['class_name']}  {det['confidence']:.1%}  "
+        f"[DETECT] {det['className']}  {det['confidence']:.1%}  "
         f"({inference_ms:.0f} ms)"
     )
 
     return DetectionResult(
         detected=True,
-        class_name=det["class_name"],
+        className=det["className"],
         confidence=det["confidence"],
         box=det["box"],
     )

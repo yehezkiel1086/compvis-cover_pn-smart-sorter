@@ -100,7 +100,7 @@ func (s *Store) seed() {
 		OverallStatus: DNPending,
 		Items: []DNItem{
 			{
-				ID: "1", PartNumber: "W_CV01_D31LXXX_C01N_NL_DG00",
+				ID: "1", PartNumber: "W_CV01_B24RSXX_B03N_NL_DG00",
 				PONumber: "SUB250432", Line: 1, WONumber: "PKSC11156",
 				QtyDN: 135, QtyLabel: 0, Status: StatusPending,
 			},
