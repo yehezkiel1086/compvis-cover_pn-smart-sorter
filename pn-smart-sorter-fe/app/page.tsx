@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
-import { Scan, Package, Clock, ChevronRight, AlertCircle, Loader2, Barcode } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
 import { fetchDN, getMockDN } from '@/lib/api'
+import { AlertCircle, Barcode, ChevronRight, Clock, Loader2, Package, Scan } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { useEffect, useRef, useState } from 'react'
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === 'true'
 const MAX_RECENT = 5
@@ -25,17 +25,13 @@ export default function HomePage() {
   const [dnInput, setDnInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [recent, setRecent] = useState<RecentEntry[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('smart-sorter-recent')
-      return saved ? JSON.parse(saved) : []
-    }
-    return []
-  })
+  const [recent, setRecent] = useState<RecentEntry[]>([])
 
   // Auto-focus input on mount (for barcode scanner)
   useEffect(() => {
     inputRef.current?.focus()
+    const saved = localStorage.getItem('smart-sorter-recent')
+    if (saved) setRecent(JSON.parse(saved))
   }, [])
 
   const saveRecent = (entry: RecentEntry) => {

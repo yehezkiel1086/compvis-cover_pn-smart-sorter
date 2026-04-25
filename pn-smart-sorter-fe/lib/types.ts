@@ -1,75 +1,104 @@
 // ─────────────────────────────────────────────
-// DN (Delivery Note) Types
+// External DN API  (appext.incoe.astra.co.id)
+// ─────────────────────────────────────────────
+
+/** One row returned by the external Astra DN API */
+export interface ExternalDNRow {
+  NODN:  string
+  ITEM:  string   // part number
+  QTY:   number
+  PO:    string
+}
+
+export interface ExternalDNResponse {
+  results: ExternalDNRow[]
+}
+
+// ─────────────────────────────────────────────
+// Input Receipt / Packing types
+// ─────────────────────────────────────────────
+
+export interface PackingItem {
+  uniqueKey:   string   // ITEM + "_" + NODN
+  partNumber:  string
+  noDn:        string
+  po:          string
+  qtyDN:       number
+  qtyLabel:    number
+  status:      'Terpenuhi' | 'Belum Terpenuhi'
+}
+
+export interface InputtedLabel {
+  label:       string
+  partNumber:  string
+  qty:         number
+  noDn:        string
+}
+
+export interface LabelLookupResult {
+  success:     boolean
+  message?:    string
+  partNumber?: string
+  qty?:        number
+  label?:      string
+}
+
+export interface LabelSummaryItem {
+  partNumberLabel: string
+  noDn:            string
+  label:           string
+  qtyLabel:        number
+}
+
+export interface SavePackingPayload {
+  mainDn:         string
+  po:             string
+  details:        PackingDetail[]
+  inputtedLabels: InputtedLabel[]
+}
+
+export interface PackingDetail {
+  partNumberDn:   string
+  noDnItem:       string
+  poItem:         string
+  qtyDnItem:      number
+  totalQtyDn:     number
+  totalQtyLabel:  number
+  status:         'Terpenuhi' | 'Belum Terpenuhi'
+}
+
+// ─────────────────────────────────────────────
+// Computer Vision
+// ─────────────────────────────────────────────
+
+export interface DetectionResult {
+  detected:   boolean
+  className:  string | null
+  confidence: number
+  box:        [number, number, number, number] | null
+}
+
+// ─────────────────────────────────────────────
+// Legacy types kept for backward compat
 // ─────────────────────────────────────────────
 
 export interface DNItem {
-  id: string
-  partNumber: string   // e.g. "Z-CV02-B20LXXX-B02N-NL-DG00"
-  poNumber: string     // e.g. "SUB250432"
-  line: number
-  woNumber: string     // e.g. "PKSC11156"
-  qtyDN: number        // quantity required per DN
-  qtyLabel: number     // quantity already labelled in existing system
-  status: 'pending' | 'partial' | 'fulfilled'
+  id:               string
+  partNumber:       string
+  poNumber:         string
+  line:             number
+  woNumber:         string
+  qtyDN:            number
+  qtyLabel:         number
+  status:           'pending' | 'partial' | 'fulfilled'
   cameraValidation: string | null
 }
 
 export interface DNDetail {
-  dnNumber: string     // e.g. "KSS007317A"
-  packingSlip: string  // e.g. "024/CBI/JUL/25"
-  supplier: string
-  date: string         // ISO string
-  items: DNItem[]
+  dnNumber:      string
+  packingSlip:   string
+  supplier:      string
+  date:          string
+  items:         DNItem[]
   overallStatus: 'pending' | 'in_progress' | 'complete' | 'discrepancy'
-}
-
-// ─────────────────────────────────────────────
-// Computer Vision / Detection Types
-// ─────────────────────────────────────────────
-
-export interface DetectionResult {
-  detected: boolean
-  className: string | null     // YOLO class name = PN code
-  confidence: number           // 0.0 – 1.0
-  // Normalised bounding box coords (0–1 relative to frame size)
-  box: [number, number, number, number] | null  // x1, y1, x2, y2
-}
-
-// ─────────────────────────────────────────────
-// Scan Session State
-// ─────────────────────────────────────────────
-
-export interface ScanCount {
-  partNumber: string
-  required: number
-  scanned: number
-  status: 'pending' | 'partial' | 'fulfilled' | 'excess'
-  lastMethod: 'auto' | 'manual' | null
-  lastConfidence: number | null
-}
-
-export interface ScanLogEntry {
-  id: string
-  partNumber: string
-  method: 'auto' | 'manual'
-  confidence: number | null
-  timestamp: Date
-  note?: string
-}
-
-// ─────────────────────────────────────────────
-// Submission / Completion
-// ─────────────────────────────────────────────
-
-export type CompletionStatus = 'fulfilled' | 'discrepancy'
-
-export interface CompletionPayload {
-  dnNumber: string
-  status: CompletionStatus
-  note?: string
-  items: {
-    partNumber: string
-    qtyRequired: number
-    qtyScanned: number
-  }[]
 }

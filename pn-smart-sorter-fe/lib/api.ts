@@ -1,61 +1,111 @@
-import type { CompletionPayload, DetectionResult, DNDetail } from '@/lib/types'
+import type {
+  DetectionResult,
+  DNDetail,
+  ExternalDNResponse,
+  LabelLookupResult,
+  LabelSummaryItem,
+  SavePackingPayload,
+} from './types';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080'
+const API_URL       = process.env.NEXT_PUBLIC_API_URL       ?? 'http://localhost:8080'
 const INFERENCE_URL = process.env.NEXT_PUBLIC_INFERENCE_URL ?? 'http://localhost:8000'
 
 // ─────────────────────────────────────────────
-// DN Endpoints  (Go backend)
+// DN endpoints
 // ─────────────────────────────────────────────
 
-export async function fetchDN(dnNumber: string): Promise<DNDetail> {
-  const res = await fetch(
-    `${API_URL}/api/dn/${encodeURIComponent(dnNumber)}`,
-    { cache: 'no-store' }
-  )
-  if (res.status === 404) throw new Error('Nomor DN tidak ditemukan.')
+/** Check if DN already exists in the packing table */
+export async function checkDnInPacking(
+  dn: string
+): Promise<{ success: boolean; message?: string }> {
+  const res = await fetch(`${API_URL}/api/dn/check`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dn }),
+  })
+  if (!res.ok) throw new Error('Gagal memeriksa status DN.')
+  return res.json()
+}
+
+/**
+ * Fetch DN items from the external Astra API
+ * (proxied through the Go backend to avoid CORS).
+ */
+export async function fetchDNItems(dn: string): Promise<ExternalDNResponse> {
+  const res = await fetch(`${API_URL}/api/dn/items/${encodeURIComponent(dn)}`)
+  if (res.status === 404) throw new Error('Nomor DN tidak terdaftar.')
   if (!res.ok) throw new Error('Gagal mengambil data DN dari server.')
   return res.json()
 }
 
-export async function recordScan(
-  dnNumber: string,
-  payload: {
-    partNumber: string
-    method: 'auto' | 'manual'
-    confidence: number | null
-    note?: string
-  }
-): Promise<void> {
-  const res = await fetch(
-    `${API_URL}/api/dn/${encodeURIComponent(dnNumber)}/scan`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    }
-  )
-  if (!res.ok) throw new Error('Gagal menyimpan data scan.')
-}
-
-export async function completeDN(payload: CompletionPayload): Promise<void> {
-  const res = await fetch(
-    `${API_URL}/api/dn/${encodeURIComponent(payload.dnNumber)}/complete`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    }
-  )
-  if (!res.ok) throw new Error('Gagal menyimpan hasil verifikasi.')
+/**
+ * Fetch the qty-label summary already saved to detail_label_packing for this DN.
+ * Used to pre-populate the packing table when revisiting a DN.
+ */
+export async function fetchLabelSummary(
+  dn: string
+): Promise<{ success: boolean; data: LabelSummaryItem[] }> {
+  const res = await fetch(`${API_URL}/api/dn/label-summary`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dn }),
+  })
+  if (!res.ok) throw new Error('Gagal mengambil ringkasan qty label.')
+  return res.json()
 }
 
 // ─────────────────────────────────────────────
-// Inference Endpoint  (Python FastAPI server)
+// Label endpoints
 // ─────────────────────────────────────────────
 
-export async function detectFrame(
-  frameBase64: string
-): Promise<DetectionResult> {
+/** Look up a label barcode in the labels master table */
+export async function lookupLabel(label: string): Promise<LabelLookupResult> {
+  const res = await fetch(`${API_URL}/api/label/lookup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ label }),
+  })
+  if (!res.ok) throw new Error('Gagal mencari data label.')
+  return res.json()
+}
+
+/** Delete a label from detail_label_packing */
+export async function deleteLabel(payload: {
+  id:          string
+  dn:          string
+  qty:         number
+  partNumber:  string
+}): Promise<{ success: boolean }> {
+  const res = await fetch(`${API_URL}/api/label/delete`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) throw new Error('Gagal menghapus label.')
+  return res.json()
+}
+
+// ─────────────────────────────────────────────
+// Packing save
+// ─────────────────────────────────────────────
+
+export async function savePacking(
+  payload: SavePackingPayload
+): Promise<{ success: boolean; message?: string }> {
+  const res = await fetch(`${API_URL}/api/packing/save`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) throw new Error('Gagal menyimpan packing.')
+  return res.json()
+}
+
+// ─────────────────────────────────────────────
+// Computer Vision inference
+// ─────────────────────────────────────────────
+
+export async function detectFrame(frameBase64: string): Promise<DetectionResult> {
   const res = await fetch(`${INFERENCE_URL}/detect`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -66,8 +116,30 @@ export async function detectFrame(
 }
 
 // ─────────────────────────────────────────────
-// Mock data helpers (for local dev without Go backend)
+// Legacy helpers (kept for backward compat)
 // ─────────────────────────────────────────────
+
+export async function fetchDN(dnNumber: string): Promise<DNDetail> {
+  const items = await fetchDNItems(dnNumber)
+  return {
+    dnNumber,
+    packingSlip: '',
+    supplier: '',
+    date: new Date().toISOString(),
+    overallStatus: 'pending',
+    items: items.results.map((r, i) => ({
+      id: String(i),
+      partNumber: r.ITEM,
+      poNumber: r.PO,
+      line: i + 1,
+      woNumber: '',
+      qtyDN: r.QTY,
+      qtyLabel: 0,
+      status: 'pending',
+      cameraValidation: null,
+    })),
+  }
+}
 
 export function getMockDN(dnNumber: string): DNDetail {
   return {
@@ -84,17 +156,6 @@ export function getMockDN(dnNumber: string): DNDetail {
         line: 1,
         woNumber: 'PKSC11156',
         qtyDN: 135,
-        qtyLabel: 0,
-        status: 'pending',
-        cameraValidation: null,
-      },
-      {
-        id: '2',
-        partNumber: 'Z-CV02-B20LXXX-B02N-NL-DG00',
-        poNumber: 'SUB250433',
-        line: 2,
-        woNumber: 'PKSC11157',
-        qtyDN: 50,
         qtyLabel: 0,
         status: 'pending',
         cameraValidation: null,
